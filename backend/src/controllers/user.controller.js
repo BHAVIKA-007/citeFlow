@@ -180,7 +180,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     const user = await User.findByIdAndUpdate(
         req.user._id,
         { $set: { name, email } },
-        { new: true }
+        { returnDocument: "after" }
     ).select("-password");
 
     return res.status(200).json(
@@ -201,7 +201,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     const user = await User.findByIdAndUpdate(
         req.user._id,
         { $set: { avatar: avatar.url } },
-        { new: true }
+        { returnDocument: "after" }
     ).select("-password");
 
     return res.status(200).json(

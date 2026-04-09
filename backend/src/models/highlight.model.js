@@ -14,6 +14,10 @@ const highlightSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Paper",
   },
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Paper } from "../models/paper.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+
 // Create Paper
 const createPaper = asyncHandler(async (req, res) => {
     const {
@@ -38,7 +39,9 @@ const createPaper = asyncHandler(async (req, res) => {
 
 // Get All Papers
 const getAllPapers = asyncHandler(async (req, res) => {
-    const papers = await Paper.find();
+    const papers = await Paper.find({ owner: req.user._id })
+        .populate("topic", "topicName")
+        .populate("tags", "tagName");
 
     return res.status(200).json(
         new ApiResponse(200, papers, "All papers fetched")
@@ -47,7 +50,9 @@ const getAllPapers = asyncHandler(async (req, res) => {
 
 // Get Paper By ID
 const getPaperById = asyncHandler(async (req, res) => {
-    const paper = await Paper.findById(req.params.id);
+    const paper = await Paper.findOne({ _id: req.params.id, owner: req.user._id })
+        .populate("topic", "topicName")
+        .populate("tags", "tagName");
 
     if (!paper) {
         throw new ApiError(404, "Paper not found");
@@ -60,11 +65,15 @@ const getPaperById = asyncHandler(async (req, res) => {
 
 // Update Paper
 const updatePaper = asyncHandler(async (req, res) => {
-    const paper = await Paper.findByIdAndUpdate(
-        req.params.id,
+    const paper = await Paper.findOneAndUpdate(
+        { _id: req.params.id, owner: req.user._id },
         req.body,
-        { new: true }
-    );
+        { returnDocument: "after" }
+    ).populate("topic", "topicName").populate("tags", "tagName");
+
+    if (!paper) {
+        throw new ApiError(404, "Paper not found or unauthorized");
+    }
 
     return res.status(200).json(
         new ApiResponse(200, paper, "Paper updated")
@@ -73,7 +82,11 @@ const updatePaper = asyncHandler(async (req, res) => {
 
 // Delete Paper
 const deletePaper = asyncHandler(async (req, res) => {
-    await Paper.findByIdAndDelete(req.params.id);
+    const paper = await Paper.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
+
+    if (!paper) {
+        throw new ApiError(404, "Paper not found or unauthorized");
+    }
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Paper deleted")
@@ -82,24 +95,42 @@ const deletePaper = asyncHandler(async (req, res) => {
 
 // Upload PDF
 const uploadPaperPDF = asyncHandler(async (req, res) => {
+    console.log("REQ.FILE:", req.file);
+
     const pdfLocalPath = req.file?.path;
 
     if (!pdfLocalPath) {
         throw new ApiError(400, "PDF required");
     }
 
-    const pdf = await uploadOnCloudinary(pdfLocalPath);
+    const pdf = await uploadOnCloudinary(pdfLocalPath, {
+        resource_type: "raw",
+        type: "upload",        // 🔥 IMPORTANT
+    flags: "attachment"  
+    });
 
-    const paper = await Paper.findByIdAndUpdate(
-        req.params.id,
-        { pdfPath: pdf.url },
-        { new: true }
+    if (!pdf) {
+        throw new ApiError(500, "Cloudinary upload failed");
+    }
+
+    console.log("CLOUDINARY RESPONSE:", pdf);
+
+    const paper = await Paper.findOneAndUpdate(
+        { _id: req.params.id, owner: req.user._id },
+        { pdfPath: pdf.secure_url },
+        { returnDocument: "after" }
     );
+
+    if (!paper) {
+        throw new ApiError(404, "Paper not found or unauthorized");
+    }
 
     return res.status(200).json(
         new ApiResponse(200, paper, "PDF uploaded")
     );
 });
+
+    
 
 const searchPapers = asyncHandler(async (req, res) => {
     const { search, topic, tag, year, sort, favorite } = req.query;
@@ -148,10 +179,10 @@ const searchPapers = asyncHandler(async (req, res) => {
 });
 
 const toggleFavorite = asyncHandler(async (req, res) => {
-    const paper = await Paper.findById(req.params.id);
+    const paper = await Paper.findOne({ _id: req.params.id, owner: req.user._id });
 
     if (!paper) {
-        throw new ApiError(404, "Paper not found");
+        throw new ApiError(404, "Paper not found or unauthorized");
     }
 
     paper.isFavorite = !paper.isFavorite;
