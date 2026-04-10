@@ -9,39 +9,69 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 const createPaper = asyncHandler(async (req, res) => {
     const {
         title,
+        description,
         authors,
         publicationYear,
         journal,
-        topic,
+        topics,
         tags,
-        readStatus
+        readStatus,
+        externalLink
     } = req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
         throw new ApiError(400, "Title is required");
     }
 
+    if (publicationYear && (isNaN(publicationYear) || publicationYear < 1000 || publicationYear > new Date().getFullYear() + 10)) {
+        throw new ApiError(400, "Publication year must be a valid number");
+    }
+
+    // Handle authors as array
+    let authorsArray = [];
+    if (typeof authors === 'string') {
+        authorsArray = authors.split(',').map(a => a.trim()).filter(a => a);
+    } else if (Array.isArray(authors)) {
+        authorsArray = authors.filter(a => a);
+    }
+
+    // Handle topics as array
+    let topicsArray = [];
+    if (typeof topics === 'string') {
+        topicsArray = [topics];
+    } else if (Array.isArray(topics)) {
+        topicsArray = topics.filter(t => t);
+    }
+
     const paper = await Paper.create({
-        title,
-        authors,
+        title: title.trim(),
+        description: description || "",
+        authors: authorsArray,
         publicationYear,
-        journal,
-        topic,
-        tags,
-        readStatus,
-        owner: req.user._id   // VERY IMPORTANT
+        journal: journal || "",
+        externalLink: externalLink || "",
+        topics: topicsArray,
+        tags: tags || [],
+        readStatus: readStatus || "to-read",
+        owner: req.user._id
     });
 
+    const populatedPaper = await paper.populate([
+        { path: "topics", select: "topicName" },
+        { path: "tags", select: "tagName" }
+    ]);
+
     return res.status(201).json(
-        new ApiResponse(201, paper, "Paper created")
+        new ApiResponse(201, populatedPaper, "Paper created successfully")
     );
 });
 
 // Get All Papers
 const getAllPapers = asyncHandler(async (req, res) => {
     const papers = await Paper.find({ owner: req.user._id })
-        .populate("topic", "topicName")
-        .populate("tags", "tagName");
+        .populate("topics", "topicName")
+        .populate("tags", "tagName")
+        .sort({ createdAt: -1 });
 
     return res.status(200).json(
         new ApiResponse(200, papers, "All papers fetched")
@@ -51,7 +81,7 @@ const getAllPapers = asyncHandler(async (req, res) => {
 // Get Paper By ID
 const getPaperById = asyncHandler(async (req, res) => {
     const paper = await Paper.findOne({ _id: req.params.id, owner: req.user._id })
-        .populate("topic", "topicName")
+        .populate("topics", "topicName")
         .populate("tags", "tagName");
 
     if (!paper) {
@@ -65,18 +95,36 @@ const getPaperById = asyncHandler(async (req, res) => {
 
 // Update Paper
 const updatePaper = asyncHandler(async (req, res) => {
+    const { authors, topics } = req.body;
+    
+    let updateData = { ...req.body };
+
+    // Handle authors as array
+    if (authors && typeof authors === 'string') {
+        updateData.authors = authors.split(',').map(a => a.trim()).filter(a => a);
+    }
+
+    // Handle topics as array
+    if (topics) {
+        if (typeof topics === 'string') {
+            updateData.topics = [topics];
+        } else if (Array.isArray(topics)) {
+            updateData.topics = topics.filter(t => t);
+        }
+    }
+
     const paper = await Paper.findOneAndUpdate(
         { _id: req.params.id, owner: req.user._id },
-        req.body,
-        { returnDocument: "after" }
-    ).populate("topic", "topicName").populate("tags", "tagName");
+        updateData,
+        { returnDocument: "after", runValidators: true }
+    ).populate("topics", "topicName").populate("tags", "tagName");
 
     if (!paper) {
         throw new ApiError(404, "Paper not found or unauthorized");
     }
 
     return res.status(200).json(
-        new ApiResponse(200, paper, "Paper updated")
+        new ApiResponse(200, paper, "Paper updated successfully")
     );
 });
 
@@ -133,20 +181,36 @@ const uploadPaperPDF = asyncHandler(async (req, res) => {
     
 
 const searchPapers = asyncHandler(async (req, res) => {
-    const { search, topic, tag, year, sort, favorite } = req.query;
+    const { search, topic, tag, year, sort, favorite, searchBy } = req.query;
 
     let query = { owner: req.user._id };
 
     if (search) {
-        query.title = { $regex: search, $options: "i" };
+        const searchRegex = { $regex: search, $options: "i" };
+        
+        if (searchBy === 'author') {
+            query.authors = searchRegex;
+        } else if (searchBy === 'title') {
+            query.$or = [
+                { title: searchRegex },
+                { description: searchRegex }
+            ];
+        } else {
+            // Default: search title, description, and authors
+            query.$or = [
+                { title: searchRegex },
+                { description: searchRegex },
+                { authors: searchRegex }
+            ];
+        }
     }
 
     if (topic) {
-        query.topic = topic;
+        query.topics = topic;
     }
 
     if (year) {
-        query.publicationYear = year;
+        query.publicationYear = parseInt(year);
     }
 
     if (tag) {
@@ -158,23 +222,23 @@ const searchPapers = asyncHandler(async (req, res) => {
     }
 
     let papersQuery = Paper.find(query)
-        .populate("topic", "topicName")
+        .populate("topics", "topicName")
         .populate("tags", "tagName");
 
-    if (sort === "year") {
+    if (sort === "year-asc") {
+        papersQuery = papersQuery.sort({ publicationYear: 1 });
+    } else if (sort === "year-desc") {
         papersQuery = papersQuery.sort({ publicationYear: -1 });
-    }
-    if (sort === "title") {
+    } else if (sort === "title") {
         papersQuery = papersQuery.sort({ title: 1 });
-    }
-    if (sort === "created") {
+    } else {
         papersQuery = papersQuery.sort({ createdAt: -1 });
     }
 
     const papers = await papersQuery;
 
     return res.status(200).json(
-        new ApiResponse(200, papers, "Papers fetched")
+        new ApiResponse(200, papers, "Papers fetched successfully")
     );
 });
 

@@ -8,9 +8,14 @@ const noteSchema = new Schema(
     },
     noteType: {
       type: String,
+      enum: ["text", "image", "pdf"],
+      default: "text",
     },
     pageNumber: {
       type: Number,
+    },
+    attachment: {
+      type: String, // URL for image/pdf
     },
     owner: {
       type: Schema.Types.ObjectId,

@@ -58,6 +58,21 @@ const updateTopic = asyncHandler(async (req, res) => {
 
 // Delete Topic
 const deleteTopic = asyncHandler(async (req, res) => {
+    const { deletePapers } = req.body;
+
+    const topic = await ResearchTopic.findById(req.params.id);
+    if (!topic) {
+        throw new ApiError(404, "Topic not found");
+    }
+
+    if (deletePapers) {
+        // Delete associated papers
+        await Paper.deleteMany({ topic: req.params.id, owner: req.user._id });
+    } else {
+        // Unassign papers from topic
+        await Paper.updateMany({ topic: req.params.id, owner: req.user._id }, { $unset: { topic: 1 } });
+    }
+
     await ResearchTopic.findByIdAndDelete(req.params.id);
 
     return res.status(200).json(

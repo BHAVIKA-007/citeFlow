@@ -5,10 +5,17 @@ const paperSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    authors: String,
+    description: {
+        type: String,
+        default: ""
+    },
+    authors: [{
+        type: String
+    }],
     publicationYear: Number,
     journal: String,
     pdfPath: String,
+    externalLink: String,
 
     readStatus: {
         type: String,
@@ -16,17 +23,15 @@ const paperSchema = new mongoose.Schema({
         default: "to-read"
     },
 
-    topic: {
+    topics: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "ResearchTopic"
-    },
+    }],
 
-    tags: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Tag"
-        }
-    ],
+    tags: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tag"
+    }],
 
     owner: {
         type: mongoose.Schema.Types.ObjectId,

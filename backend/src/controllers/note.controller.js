@@ -19,10 +19,11 @@ const createNote = asyncHandler(async (req, res) => {
 
 // Get Notes by Paper
 const getNotes = asyncHandler(async (req, res) => {
-    const notes = await Note.find({ paper: req.params.paperId, owner: req.user._id });
+    const notes = await Note.find({ paper: req.params.paperId, owner: req.user._id })
+        .sort({ createdAt: -1 });
 
     return res.status(200).json(
-        new ApiResponse(200, notes, "Notes fetched")
+        new ApiResponse(200, notes, "Notes fetched successfully")
     );
 });
 
