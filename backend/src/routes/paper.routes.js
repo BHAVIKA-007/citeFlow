@@ -23,7 +23,7 @@ router.route("/topic/:topicId").get(verifyJWT, getPapersByTopic);
 
 // normal routes
 router.route("/")
-    .post(verifyJWT, createPaper)
+    .post(verifyJWT, upload.single("pdf"), createPaper)
     .get(verifyJWT, getAllPapers);
 
 router.route("/:id")

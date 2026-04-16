@@ -20,8 +20,11 @@ const Papers = () => {
     authors: "",
     publicationYear: "",
     journal: "",
-    topic: "",
-  });
+      topics: [],        // ✅ multiple topics
+  externalLink: ""   // ✅ new field
+});
+
+const [pdfFile, setPdfFile] = useState(null); // ✅ for upload
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
   const location = useLocation();
@@ -108,32 +111,59 @@ const Papers = () => {
     }
   };
 
-  const handleCreatePaper = async (e) => {
-    e.preventDefault();
-    if (!newPaper.title.trim()) {
-      setCreateError("Title is required");
-      return;
+ const handleCreatePaper = async (e) => {
+  e.preventDefault();
+
+  if (!newPaper.title.trim()) {
+    setCreateError("Title is required");
+    return;
+  }
+
+  try {
+    setCreateError("");
+    setCreateSuccess("");
+
+    const formData = new FormData();
+
+    formData.append("title", newPaper.title);
+    formData.append("authors", newPaper.authors);
+    formData.append("publicationYear", newPaper.publicationYear);
+    formData.append("journal", newPaper.journal);
+    formData.append("externalLink", newPaper.externalLink);
+
+    // ✅ topics (multiple)
+    newPaper.topics.forEach(t => formData.append("topics", t));
+
+    // ✅ pdf
+    if (pdfFile) {
+      formData.append("pdf", pdfFile);
     }
 
-    try {
-      setCreateError("");
-      setCreateSuccess("");
-      await createPaper({
-        title: newPaper.title,
-        authors: newPaper.authors,
-        publicationYear: newPaper.publicationYear ? Number(newPaper.publicationYear) : undefined,
-        journal: newPaper.journal,
-        topic: newPaper.topic || undefined,
-      });
-      setCreateSuccess("Paper added successfully!");
-      setNewPaper({ title: "", authors: "", publicationYear: "", journal: "", topic: "" });
-      setShowCreatePaper(false);
-      fetchPapers();
-      setTimeout(() => setCreateSuccess(""), 3000);
-    } catch (err) {
-      setCreateError(err.response?.data?.message || "Failed to create paper");
+    console.log("📤 SENDING FORM DATA");
+    for (let pair of formData.entries()) {
+      console.log(pair[0], pair[1]);
     }
-  };
+
+    await createPaper(formData);
+
+    setCreateSuccess("Paper added successfully!");
+    setNewPaper({
+      title: "",
+      authors: "",
+      publicationYear: "",
+      journal: "",
+      topics: [],
+      externalLink: ""
+    });
+    setPdfFile(null);
+
+    fetchPapers();
+
+  } catch (err) {
+    console.error(err);
+    setCreateError(err.response?.data?.message || "Failed to create paper");
+  }
+};
 
   if (isLoading) {
     return (
@@ -218,20 +248,39 @@ const Papers = () => {
               value={newPaper.journal}
               onChange={(e) => setNewPaper({ ...newPaper, journal: e.target.value })}
             />
-            <select
-              value={newPaper.topic}
-              onChange={(e) => setNewPaper({ ...newPaper, topic: e.target.value })}
-            >
-              <option value="">Select Topic</option>
-              {topics.map((topic) => (
-                <option key={topic._id} value={topic._id}>
-                  {topic.topicName || topic.name}
-                </option>
-              ))}
-            </select>
+           <select
+  multiple
+  value={newPaper.topics}
+  onChange={(e) => {
+    const selected = Array.from(e.target.selectedOptions, o => o.value);
+    setNewPaper({ ...newPaper, topics: selected });
+  }}
+>
+  <option disabled>Select Topics</option>
+  {topics.map((topic) => (
+    <option key={topic._id} value={topic._id}>
+      {topic.topicName || topic.name}
+    </option>
+  ))}
+</select>
             <button type="submit" className="btn-primary">
               Save Paper
             </button>
+
+            <input
+  type="file"
+  accept="application/pdf"
+  onChange={(e) => setPdfFile(e.target.files[0])}
+/>
+
+<input
+  type="text"
+  placeholder="External link (optional)"
+  value={newPaper.externalLink}
+  onChange={(e) =>
+    setNewPaper({ ...newPaper, externalLink: e.target.value })
+  }
+/>
             {createError && <div className="alert alert-error">{createError}</div>}
             {createSuccess && <div className="alert alert-success">{createSuccess}</div>}
           </form>

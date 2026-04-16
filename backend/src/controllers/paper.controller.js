@@ -19,6 +19,9 @@ const createPaper = asyncHandler(async (req, res) => {
         externalLink
     } = req.body;
 
+    console.log("🟡 CREATE PAPER BODY:", req.body);
+    console.log("📄 FILE RECEIVED:", req.file);
+
     if (!title || !title.trim()) {
         throw new ApiError(400, "Title is required");
     }
@@ -27,7 +30,7 @@ const createPaper = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Publication year must be a valid number");
     }
 
-    // Handle authors as array
+    // ================= AUTHORS =================
     let authorsArray = [];
     if (typeof authors === 'string') {
         authorsArray = authors.split(',').map(a => a.trim()).filter(a => a);
@@ -35,26 +38,57 @@ const createPaper = asyncHandler(async (req, res) => {
         authorsArray = authors.filter(a => a);
     }
 
-    // Handle topics as array
+    console.log("👤 AUTHORS ARRAY:", authorsArray);
+
+    // ================= TOPICS =================
     let topicsArray = [];
-    if (typeof topics === 'string') {
-        topicsArray = [topics];
-    } else if (Array.isArray(topics)) {
+
+    if (Array.isArray(topics)) {
         topicsArray = topics.filter(t => t);
+    } else if (typeof topics === 'string' && topics.trim()) {
+        topicsArray = [topics];
     }
 
+    console.log("🏷 TOPICS ARRAY:", topicsArray);
+
+    // ================= PDF UPLOAD =================
+    let pdfUrl = "";
+
+    if (req.file) {
+        console.log("📤 Uploading PDF to Cloudinary...");
+
+        const pdf = await uploadOnCloudinary(req.file.path, {
+            resource_type: "raw",
+            type: "upload",
+            flags: "attachment"
+        });
+
+        if (!pdf) {
+            throw new ApiError(500, "PDF upload failed");
+        }
+
+        pdfUrl = pdf.secure_url;
+        console.log("✅ PDF UPLOADED:", pdfUrl);
+    } else {
+        console.log("⚠️ No PDF uploaded");
+    }
+
+    // ================= CREATE =================
     const paper = await Paper.create({
         title: title.trim(),
         description: description || "",
         authors: authorsArray,
         publicationYear,
         journal: journal || "",
-        externalLink: externalLink || "",
-        topics: topicsArray,
+        externalLink: externalLink || "",   // ✅ optional
+        pdfPath: pdfUrl,                    // ✅ optional
+        topics: topicsArray,                // ✅ 0 / 1 / multiple
         tags: tags || [],
         readStatus: readStatus || "to-read",
         owner: req.user._id
     });
+
+    console.log("🎉 PAPER CREATED:", paper);
 
     const populatedPaper = await paper.populate([
         { path: "topics", select: "topicName" },
@@ -80,9 +114,14 @@ const getAllPapers = asyncHandler(async (req, res) => {
 
 // Get Paper By ID
 const getPaperById = asyncHandler(async (req, res) => {
-    const paper = await Paper.findOne({ _id: req.params.id, owner: req.user._id })
+    console.log("PARAM ID:", req.params.id);
+    console.log("USER ID:", req.user._id);
+
+    const paper = await Paper.findById(req.params.id)
         .populate("topics", "topicName")
         .populate("tags", "tagName");
+
+    console.log("FOUND PAPER:", paper);
 
     if (!paper) {
         throw new ApiError(404, "Paper not found");
@@ -259,7 +298,7 @@ const toggleFavorite = asyncHandler(async (req, res) => {
 
 const getPapersByTopic = asyncHandler(async (req, res) => {
     const papers = await Paper.find({
-        topic: req.params.topicId,
+        topics: req.params.topicId,
         owner: req.user._id
     })
     .populate("topic", "topicName")
