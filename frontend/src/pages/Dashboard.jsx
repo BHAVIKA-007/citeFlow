@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // 👈 added
 import Layout from "../components/Layout";
 import DashboardCard from "../components/DashboardCard";
 import { getDashboardStats } from "../api/services/dashboardService";
 
 const Dashboard = () => {
+  const navigate = useNavigate(); // 👈 added
+
   const [stats, setStats] = useState({
     totalPapers: 0,
     totalTopics: 0,
     totalNotes: 0,
     favoritePapers: 0,
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,38 +51,32 @@ const Dashboard = () => {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="stats-grid">
-        <DashboardCard
-          icon="📚"
-          label="Total Papers"
-          value={stats.totalPapers || 0}
-          trend="papers in your library"
-        />
-        <DashboardCard
-          icon="🏷️"
-          label="Research Topics"
-          value={stats.totalTopics || 0}
-          trend="topics created"
-        />
-        <DashboardCard
-          icon="⭐"
-          label="Favorite Papers"
-          value={stats.favoritePapers || 0}
-          trend="papers bookmarked"
-        />
-        <DashboardCard
-          icon="📝"
-          label="Total Notes"
-          value={stats.totalNotes || 0}
-          trend="notes written"
-        />
-      </div>
+  <DashboardCard
+    icon="📚"
+    label="Total Papers"
+    value={stats.totalPapers || 0}
+    trend="papers in your library"
+    onClick={() => navigate("/papers")}
+  />
 
-      <div className="chart-section">
-        <h3>📈 Quick Stats</h3>
-        <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
-          <p>Start by creating topics, adding papers, and organizing your research!</p>
-        </div>
-      </div>
+  <DashboardCard
+    icon="🏷️"
+    label="Research Topics"
+    value={stats.totalTopics || 0}
+    trend="topics created"
+    onClick={() => navigate("/topics")}
+  />
+
+  <DashboardCard
+    icon="⭐"
+    label="Favorite Papers"
+    value={stats.favoritePapers || 0}
+    trend="papers bookmarked"
+    onClick={() => navigate("/favorites")}
+  />
+</div>
+
+      
     </Layout>
   );
 };
