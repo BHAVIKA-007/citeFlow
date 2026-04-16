@@ -489,14 +489,33 @@ body {
 
 .search-filter-bar {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
+.papers-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.search-field label {
+  font-size: 13px;
+  color: #5f7668;
+  margin-bottom: 8px;
+}
+
 .search-input {
-  flex: 1;
-  min-width: 250px;
   padding: 12px 15px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -519,6 +538,87 @@ body {
   cursor: pointer;
 }
 
+.paper-create-card {
+  background: #fbfbfb;
+  border: 1px solid #e8ece9;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 16px;
+}
+
+.paper-create-header {
+  font-size: 18px;
+  font-weight: 700;
+  color: #23332f;
+  margin-bottom: 16px;
+}
+
+.paper-create-form {
+  display: grid;
+  gap: 18px;
+}
+
+.paper-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.paper-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.file-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+}
+
+@media (max-width: 860px) {
+  .paper-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-subtitle {
+  color: #5f7668;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.page-loading {
+  padding: 60px 0;
+  text-align: center;
+  color: #5f7668;
+  font-size: 16px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 50px 20px;
+  background: white;
+  border-radius: 14px;
+  border: 1px dashed #d1d9d5;
+  color: #5f7668;
+}
+
+.empty-state-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.empty-state-text {
+  font-size: 15px;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
 .filter-select:focus,
 .sort-select:focus {
   outline: none;
@@ -535,6 +635,8 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: auto;
+  min-width: 160px;
 }
 
 .add-paper-btn:hover {

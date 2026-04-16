@@ -28,7 +28,6 @@ export const updateTopic = async (id, topicData) => {
 };
 
 // Delete topic
-export const deleteTopic = async (id) => {
-  const response = await API.delete(`/topics/${id}`);
-  return response.data;
+export const deleteTopic = (id, data) => {
+  return API.delete(`/topics/${id}`, { data });
 };

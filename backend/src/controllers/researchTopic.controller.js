@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ResearchTopic } from "../models/researchTopic.model.js";
 import { Paper } from "../models/paper.model.js";
@@ -29,7 +30,7 @@ const getTopics = asyncHandler(async (req, res) => {
 
     const topicsWithCount = await Promise.all(
         topics.map(async (topic) => {
-            const count = await Paper.countDocuments({ topic: topic._id, owner: req.user._id });
+            const count = await Paper.countDocuments({ topics: topic._id, owner: req.user._id });
             return {
                 ...topic.toObject(),
                 name: topic.topicName || topic.name || "Untitled Topic",
@@ -58,25 +59,43 @@ const updateTopic = asyncHandler(async (req, res) => {
 
 // Delete Topic
 const deleteTopic = asyncHandler(async (req, res) => {
-    const { deletePapers } = req.body;
+    const topicId = req.params.id;
+    const { deletePapers } = req.body; // ✅ NEW
 
-    const topic = await ResearchTopic.findById(req.params.id);
+    const topic = await ResearchTopic.findById(topicId);
     if (!topic) {
         throw new ApiError(404, "Topic not found");
     }
 
     if (deletePapers) {
-        // Delete associated papers
-        await Paper.deleteMany({ topic: req.params.id, owner: req.user._id });
+        // 🔥 SMART DELETE (your current logic)
+        const papers = await Paper.find({
+            topics: topicId,
+            owner: req.user._id
+        });
+
+        for (let paper of papers) {
+            if (paper.topics.length === 1) {
+                await Paper.findByIdAndDelete(paper._id);
+            } else {
+                paper.topics = paper.topics.filter(
+                    t => String(t) !== String(topicId)
+                );
+                await paper.save();
+            }
+        }
     } else {
-        // Unassign papers from topic
-        await Paper.updateMany({ topic: req.params.id, owner: req.user._id }, { $unset: { topic: 1 } });
+        // 🔥 ONLY REMOVE TOPIC (NO PAPER DELETE)
+        await Paper.updateMany(
+            { topics: topicId, owner: req.user._id },
+            { $pull: { topics: topicId } }
+        );
     }
 
-    await ResearchTopic.findByIdAndDelete(req.params.id);
+    await ResearchTopic.findByIdAndDelete(topicId);
 
     return res.status(200).json(
-        new ApiResponse(200, {}, "Topic deleted")
+        new ApiResponse(200, {}, "Topic deleted successfully")
     );
 });
 

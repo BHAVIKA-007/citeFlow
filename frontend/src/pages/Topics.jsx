@@ -50,17 +50,20 @@ const Topics = () => {
     }
   };
 
-  const handleDeleteTopic = async (topicId) => {
-    try {
-      setError("");
-      await deleteTopic(topicId);
-      setSuccess("Topic deleted successfully!");
-      fetchTopics();
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete topic");
-    }
-  };
+const handleDeleteTopic = async (topicId) => {
+  const deletePapers = window.confirm(
+    "Do you want to delete ALL papers that have ONLY this topic?\n\nOK = Delete those papers\nCancel = Keep papers (just remove topic)"
+  );
+
+  try {
+    await deleteTopic(topicId, { deletePapers });
+
+    setSuccess("Topic deleted successfully!");
+    fetchTopics();
+  } catch (err) {
+    setError(err.response?.data?.message || "Failed to delete topic");
+  }
+};
 
   const handleTopicClick = (topicId) => {
     navigate(`/papers?topic=${topicId}`);

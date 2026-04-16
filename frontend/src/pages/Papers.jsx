@@ -2,31 +2,37 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Layout from "../components/Layout";
 import PaperCard from "../components/PaperCard";
-import { getPapers, toggleFavorite, createPaper } from "../api/services/paperService";
+import { getPapers, toggleFavorite, createPaper, deletePaper } from "../api/services/paperService";
 import { getTopics } from "../api/services/researchTopicService";
 
 const Papers = () => {
   const [papers, setPapers] = useState([]);
   const [filteredPapers, setFilteredPapers] = useState([]);
   const [topics, setTopics] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+
+  const [searchTitle, setSearchTitle] = useState("");
+  const [searchAuthor, setSearchAuthor] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
-  const [sortBy, setSortBy] = useState("title");
+  const [sortBy, setSortBy] = useState("title-asc");
+
   const [showCreatePaper, setShowCreatePaper] = useState(false);
+
   const [newPaper, setNewPaper] = useState({
     title: "",
     authors: "",
     publicationYear: "",
     journal: "",
-      topics: [],        // ✅ multiple topics
-  externalLink: ""   // ✅ new field
-});
+    topics: [],
+    externalLink: ""
+  });
 
-const [pdfFile, setPdfFile] = useState(null); // ✅ for upload
+  const [pdfFile, setPdfFile] = useState(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
+
   const location = useLocation();
 
   useEffect(() => {
@@ -34,9 +40,11 @@ const [pdfFile, setPdfFile] = useState(null); // ✅ for upload
     fetchTopics();
   }, []);
 
+  // ✅ URL → topic sync (IMPORTANT)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const topicParam = params.get("topic") || "";
+    const topicParam = params.get("topic");
+
     if (topicParam) {
       setSelectedTopic(topicParam);
     }
@@ -44,16 +52,15 @@ const [pdfFile, setPdfFile] = useState(null); // ✅ for upload
 
   useEffect(() => {
     filterAndSortPapers();
-  }, [papers, searchTerm, selectedTopic, sortBy]);
+  }, [papers, searchTitle, searchAuthor, selectedTopic, sortBy]);
 
   const fetchPapers = async () => {
     try {
       setIsLoading(true);
-      const response = await getPapers();
-      setPapers(response.data || []);
-    } catch (err) {
+      const res = await getPapers();
+      setPapers(res.data || []);
+    } catch {
       setError("Failed to load papers");
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -61,252 +68,124 @@ const [pdfFile, setPdfFile] = useState(null); // ✅ for upload
 
   const fetchTopics = async () => {
     try {
-      const topics = await getTopics();
-      setTopics(topics || []);
-    } catch (err) {
-      console.error("Failed to load topics", err);
+      const res = await getTopics();
+      setTopics(res || []);
+    } catch {}
+  };
+
+  const handleDeletePaper = async (id) => {
+    if (!window.confirm("Delete this paper?")) return;
+
+    try {
+      await deletePaper(id);
+      setPapers(papers.filter(p => p._id !== id));
+    } catch {
+      alert("Failed to delete paper");
     }
   };
 
+  // ✅ FINAL FILTER + SORT
   const filterAndSortPapers = () => {
-    let filtered = papers;
+    let filtered = [...papers];
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (paper) =>
-          paper.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (paper.authors || "").toLowerCase().includes(searchTerm.toLowerCase())
+    if (searchTitle) {
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(searchTitle.toLowerCase())
       );
     }
 
-    // Topic filter
-    if (selectedTopic) {
-      filtered = filtered.filter((paper) => {
-        const topicId = paper.topic?._id || paper.topic;
-        return String(topicId) === selectedTopic;
+    if (searchAuthor) {
+      filtered = filtered.filter(p => {
+        const authorsText = Array.isArray(p.authors)
+          ? p.authors.join(", ").toLowerCase()
+          : (p.authors || "").toLowerCase();
+
+        return authorsText.includes(searchAuthor.toLowerCase());
       });
     }
 
-    // Sort
-    if (sortBy === "year") {
+    // ✅ FIXED topic filter
+    if (selectedTopic) {
+      filtered = filtered.filter(p =>
+        p.topics?.some(t => String(t._id || t) === selectedTopic)
+      );
+    }
+
+    // SORT
+    if (sortBy === "title-asc") {
+      filtered.sort((a, b) =>
+        a.title.toLowerCase().localeCompare(b.title.toLowerCase())
+      );
+    } else if (sortBy === "title-desc") {
+      filtered.sort((a, b) =>
+        b.title.toLowerCase().localeCompare(a.title.toLowerCase())
+      );
+    } else if (sortBy === "year-desc") {
       filtered.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
-    } else if (sortBy === "title") {
-      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === "year-asc") {
+      filtered.sort((a, b) => (a.publicationYear || 0) - (b.publicationYear || 0));
     }
 
     setFilteredPapers(filtered);
   };
 
   const handleFavoriteToggle = async (paperId, isFavorite) => {
-    try {
-      await toggleFavorite(paperId);
-      setPapers(
-        papers.map((p) =>
-          p._id === paperId ? { ...p, isFavorite } : p
-        )
-      );
-    } catch (err) {
-      setError("Failed to update favorite");
-    }
+    await toggleFavorite(paperId);
+    setPapers(papers.map(p => p._id === paperId ? { ...p, isFavorite } : p));
   };
 
- const handleCreatePaper = async (e) => {
-  e.preventDefault();
-
-  if (!newPaper.title.trim()) {
-    setCreateError("Title is required");
-    return;
-  }
-
-  try {
-    setCreateError("");
-    setCreateSuccess("");
-
-    const formData = new FormData();
-
-    formData.append("title", newPaper.title);
-    formData.append("authors", newPaper.authors);
-    formData.append("publicationYear", newPaper.publicationYear);
-    formData.append("journal", newPaper.journal);
-    formData.append("externalLink", newPaper.externalLink);
-
-    // ✅ topics (multiple)
-    newPaper.topics.forEach(t => formData.append("topics", t));
-
-    // ✅ pdf
-    if (pdfFile) {
-      formData.append("pdf", pdfFile);
-    }
-
-    console.log("📤 SENDING FORM DATA");
-    for (let pair of formData.entries()) {
-      console.log(pair[0], pair[1]);
-    }
-
-    await createPaper(formData);
-
-    setCreateSuccess("Paper added successfully!");
-    setNewPaper({
-      title: "",
-      authors: "",
-      publicationYear: "",
-      journal: "",
-      topics: [],
-      externalLink: ""
-    });
-    setPdfFile(null);
-
-    fetchPapers();
-
-  } catch (err) {
-    console.error(err);
-    setCreateError(err.response?.data?.message || "Failed to create paper");
-  }
-};
-
-  if (isLoading) {
-    return (
-      <Layout pageTitle="Papers">
-        <div className="loading">Loading papers...</div>
-      </Layout>
-    );
-  }
+  if (isLoading) return <Layout><div>Loading…</div></Layout>;
 
   return (
     <Layout pageTitle="Papers">
-      <div className="dashboard-header">
-        <h1>📄 Research Papers</h1>
-        <p>Browse and manage your research paper collection</p>
+      <h1>📄 Research Papers</h1>
+
+      {/* 🔥 SEARCH + FILTER */}
+      <div className="search-filter-bar">
+
+        <input
+          placeholder="Search by title"
+          value={searchTitle}
+          onChange={(e) => setSearchTitle(e.target.value)}
+        />
+
+        <input
+          placeholder="Search by author"
+          value={searchAuthor}
+          onChange={(e) => setSearchAuthor(e.target.value)}
+        />
+
+        {/* ✅ NEW TOPIC FILTER */}
+        <select
+          value={selectedTopic}
+          onChange={(e) => setSelectedTopic(e.target.value)}
+        >
+          <option value="">All Topics</option>
+          {topics.map(t => (
+            <option key={t._id} value={t._id}>
+              {t.topicName || t.name}
+            </option>
+          ))}
+        </select>
+
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="title-asc">A → Z</option>
+          <option value="title-desc">Z → A</option>
+          <option value="year-desc">Newest</option>
+          <option value="year-asc">Oldest</option>
+        </select>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-
-      <div className="papers-container">
-        <div className="papers-top-section">
-          <div className="search-filter-bar">
-          <input
-            type="text"
-            placeholder="Search papers by title or author..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+      {/* PAPERS */}
+      <div className="papers-grid">
+        {filteredPapers.map(p => (
+          <PaperCard
+            key={p._id}
+            paper={p}
+            onFavoriteToggle={handleFavoriteToggle}
+            onDelete={handleDeletePaper}
           />
-          <select
-            value={selectedTopic}
-            onChange={(e) => setSelectedTopic(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">All Topics</option>
-            {topics.map((topic) => (
-              <option key={topic._id} value={topic._id}>
-                {topic.topicName || topic.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="sort-select"
-          >
-            <option value="title">Sort by Title</option>
-            <option value="year">Sort by Year</option>
-          </select>
-        </div>
-        <div className="paper-actions-bar">
-          <button
-            className="btn-primary"
-            type="button"
-            onClick={() => setShowCreatePaper(!showCreatePaper)}
-          >
-            {showCreatePaper ? "Hide Add Paper" : "+ Add Paper"}
-          </button>
-        </div>
-        {showCreatePaper && (
-          <form className="add-paper-form" onSubmit={handleCreatePaper}>
-            <input
-              type="text"
-              placeholder="Paper title"
-              value={newPaper.title}
-              onChange={(e) => setNewPaper({ ...newPaper, title: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Authors"
-              value={newPaper.authors}
-              onChange={(e) => setNewPaper({ ...newPaper, authors: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Publication year"
-              value={newPaper.publicationYear}
-              onChange={(e) => setNewPaper({ ...newPaper, publicationYear: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Journal"
-              value={newPaper.journal}
-              onChange={(e) => setNewPaper({ ...newPaper, journal: e.target.value })}
-            />
-           <select
-  multiple
-  value={newPaper.topics}
-  onChange={(e) => {
-    const selected = Array.from(e.target.selectedOptions, o => o.value);
-    setNewPaper({ ...newPaper, topics: selected });
-  }}
->
-  <option disabled>Select Topics</option>
-  {topics.map((topic) => (
-    <option key={topic._id} value={topic._id}>
-      {topic.topicName || topic.name}
-    </option>
-  ))}
-</select>
-            <button type="submit" className="btn-primary">
-              Save Paper
-            </button>
-
-            <input
-  type="file"
-  accept="application/pdf"
-  onChange={(e) => setPdfFile(e.target.files[0])}
-/>
-
-<input
-  type="text"
-  placeholder="External link (optional)"
-  value={newPaper.externalLink}
-  onChange={(e) =>
-    setNewPaper({ ...newPaper, externalLink: e.target.value })
-  }
-/>
-            {createError && <div className="alert alert-error">{createError}</div>}
-            {createSuccess && <div className="alert alert-success">{createSuccess}</div>}
-          </form>
-        )}
-        </div>
-
-        {filteredPapers.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            <div className="empty-state-text">
-              {papers.length === 0
-                ? "No papers yet. Create topics and upload papers to get started!"
-                : "No papers match your search or filter criteria."}
-            </div>
-          </div>
-        ) : (
-          <div className="papers-grid">
-            {filteredPapers.map((paper) => (
-              <PaperCard
-                key={paper._id}
-                paper={paper}
-                onFavoriteToggle={handleFavoriteToggle}
-              />
-            ))}
-          </div>
-        )}
+        ))}
       </div>
     </Layout>
   );

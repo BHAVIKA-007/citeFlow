@@ -6,6 +6,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
 // Create Paper
+
 const createPaper = asyncHandler(async (req, res) => {
     const {
         title,
@@ -26,9 +27,21 @@ const createPaper = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Title is required");
     }
 
-    if (publicationYear && (isNaN(publicationYear) || publicationYear < 1000 || publicationYear > new Date().getFullYear() + 10)) {
-        throw new ApiError(400, "Publication year must be a valid number");
+  
+
+let yearNumber;
+
+if (publicationYear !== undefined && publicationYear !== "") {
+    yearNumber = Number(publicationYear);
+
+    if (!Number.isInteger(yearNumber)) {
+        throw new ApiError(400, "Publication year must be a number");
     }
+
+    if (yearNumber < 1000 || yearNumber > new Date().getFullYear() + 10) {
+        throw new ApiError(400, "Publication year is out of valid range");
+    }
+}
 
     // ================= AUTHORS =================
     let authorsArray = [];
@@ -78,7 +91,7 @@ const createPaper = asyncHandler(async (req, res) => {
         title: title.trim(),
         description: description || "",
         authors: authorsArray,
-        publicationYear,
+        publicationYear:yearNumber,
         journal: journal || "",
         externalLink: externalLink || "",   // ✅ optional
         pdfPath: pdfUrl,                    // ✅ optional

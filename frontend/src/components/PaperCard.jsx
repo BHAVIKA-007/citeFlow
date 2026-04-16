@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const PaperCard = ({ paper, onFavoriteToggle }) => {
+const PaperCard = ({ paper, onFavoriteToggle, onDelete }) => {
   const navigate = useNavigate();
   const [isFavorite, setIsFavorite] = useState(paper.isFavorite || false);
 
@@ -13,33 +13,47 @@ const PaperCard = ({ paper, onFavoriteToggle }) => {
     }
   };
 
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (onDelete) onDelete(paper._id);
+  };
+
   const handleViewClick = () => {
     navigate(`/papers/${paper._id}`);
   };
 
+  const authorsLabel = Array.isArray(paper.authors)
+    ? paper.authors.join(", ")
+    : paper.authors || "Unknown";
+
   const topicLabel =
     paper.topic?.topicName || paper.topic?.name || paper.topic || "No topic";
-  const yearLabel = paper.publicationYear || paper.year || "N/A";
+
+  const yearLabel = paper.publicationYear || "N/A";
 
   return (
     <div className="paper-card">
       <div className="paper-card-header">
         <h3 className="paper-title">{paper.title}</h3>
+
         <div className="paper-meta">
-          <span className="paper-authors">By: {paper.authors || "Unknown"}</span>
+          <span>By: {authorsLabel}</span>
           <span>📅 {yearLabel}</span>
         </div>
+
         {paper.topic && <div className="paper-badge">{topicLabel}</div>}
       </div>
+
       <div className="paper-card-footer">
-        <button
-          className={`btn-favorite ${isFavorite ? "active" : ""}`}
-          onClick={handleFavoriteClick}
-        >
+        <button onClick={handleFavoriteClick}>
           {isFavorite ? "❤️ Favorited" : "🤍 Favorite"}
         </button>
-        <button className="btn-view" onClick={handleViewClick}>
-          👁️ View
+
+        <button onClick={handleViewClick}>👁️ View</button>
+
+        {/* ✅ DELETE */}
+        <button onClick={handleDeleteClick} style={{ color: "red" }}>
+          🗑 Delete
         </button>
       </div>
     </div>
