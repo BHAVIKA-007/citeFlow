@@ -113,7 +113,7 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(79, 130, 106, 0.3);
+  box-shadow: 0 10px 25px rgba(79, 130, 106, 0.22);
 }
 
 .btn-primary:active {
@@ -123,12 +123,22 @@ body {
 .btn-secondary {
   background: #f0f0f0;
   color: #333;
-  margin-top: 15px;
-  width: 100%;
+  width: auto;
+  border: 1px solid transparent;
 }
 
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: #e8efe8;
+}
+
+.btn-danger {
+  background: #ffebeb;
+  color: #c0392b;
+  border: 1px solid #f2c6c4;
+}
+
+.btn-danger:hover {
+  background: #f4d6d6;
 }
 
 .auth-link {
@@ -515,11 +525,27 @@ body {
   margin-bottom: 8px;
 }
 
-.search-input {
-  padding: 12px 15px;
+.search-input,
+.search-filter-bar select {
+  padding: 12px 14px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
+  background: white;
+  min-width: 0;
+}
+
+.search-input {
+  width: 100%;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.search-input:focus,
+.search-filter-bar select:focus {
+  outline: none;
+  border-color: #4f826a;
+  box-shadow: 0 0 0 3px rgba(79, 130, 106, 0.12);
 }
 
 .search-input:focus {
@@ -679,6 +705,7 @@ body {
   margin-bottom: 8px;
   line-height: 1.4;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -694,6 +721,7 @@ body {
 
 .paper-authors {
   display: -webkit-box;
+  line-clamp: 1;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -715,6 +743,12 @@ body {
   display: flex;
   gap: 10px;
   border-top: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+}
+
+.paper-card-footer .btn {
+  flex: 1;
+  min-width: 120px;
 }
 
 .btn-favorite {
@@ -1661,6 +1695,7 @@ body {
   margin-bottom: 5px;
   line-height: 1.3;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;

@@ -27,7 +27,12 @@ const PaperCard = ({ paper, onFavoriteToggle, onDelete }) => {
     : paper.authors || "Unknown";
 
   const topicLabel =
-    paper.topic?.topicName || paper.topic?.name || paper.topic || "No topic";
+    paper.topics?.[0]?.topicName ||
+    paper.topics?.[0]?.name ||
+    paper.topic?.topicName ||
+    paper.topic?.name ||
+    paper.topic ||
+    "No topic";
 
   const yearLabel = paper.publicationYear || "N/A";
 
@@ -45,16 +50,19 @@ const PaperCard = ({ paper, onFavoriteToggle, onDelete }) => {
       </div>
 
       <div className="paper-card-footer">
-        <button onClick={handleFavoriteClick}>
+        <button className={`btn btn-secondary btn-favorite ${isFavorite ? "active" : ""}`} onClick={handleFavoriteClick}>
           {isFavorite ? "❤️ Favorited" : "🤍 Favorite"}
         </button>
 
-        <button onClick={handleViewClick}>👁️ View</button>
-
-        {/* ✅ DELETE */}
-        <button onClick={handleDeleteClick} style={{ color: "red" }}>
-          🗑 Delete
+        <button className="btn btn-primary btn-view" onClick={handleViewClick}>
+          👁️ View
         </button>
+
+        {onDelete && (
+          <button className="btn btn-danger" onClick={handleDeleteClick}>
+            🗑 Delete
+          </button>
+        )}
       </div>
     </div>
   );

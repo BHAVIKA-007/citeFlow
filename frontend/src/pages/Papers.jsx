@@ -134,14 +134,56 @@ const Papers = () => {
     setPapers(papers.map(p => p._id === paperId ? { ...p, isFavorite } : p));
   };
 
+  const handleCreatePaper = async (e) => {
+    e.preventDefault();
+    setCreateError("");
+    setCreateSuccess("");
+
+    if (!newPaper.title.trim()) {
+      setCreateError("Title is required");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", newPaper.title);
+    formData.append("authors", newPaper.authors);
+    formData.append("publicationYear", newPaper.publicationYear);
+    formData.append("journal", newPaper.journal);
+    formData.append("externalLink", newPaper.externalLink);
+    if (pdfFile) {
+      formData.append("pdf", pdfFile);
+    }
+
+    try {
+      await createPaper(formData);
+      setCreateSuccess("Paper added successfully!");
+      setNewPaper({
+        title: "",
+        authors: "",
+        publicationYear: "",
+        journal: "",
+        topics: [],
+        externalLink: ""
+      });
+      setPdfFile(null);
+      setShowCreatePaper(false);
+      fetchPapers();
+    } catch (err) {
+      setCreateError(err.response?.data?.message || "Failed to add paper");
+    }
+  };
+
   if (isLoading) return <Layout><div>Loading…</div></Layout>;
 
   return (
     <Layout pageTitle="Papers">
-      <h1>📄 Research Papers</h1>
+      <div className="dashboard-header">
+        <h1>📄 Research Papers</h1>
+        <p>Browse, filter, and manage your research collection in a cleaner view.</p>
+      </div>
 
-      {/* 🔥 SEARCH + FILTER */}
-      <div className="search-filter-bar">
+      <div className="papers-top-section">
+        <div className="search-filter-bar">
 
         <input
           placeholder="Search by title"
@@ -174,6 +216,94 @@ const Papers = () => {
           <option value="year-desc">Newest</option>
           <option value="year-asc">Oldest</option>
         </select>
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => setShowCreatePaper(!showCreatePaper)}
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {showCreatePaper ? "Hide Add Paper" : "+ Add Paper"}
+        </button>
+        </div>
+
+        {showCreatePaper && (
+          <div className="paper-create-card">
+            <div className="paper-create-header">Add New Paper</div>
+            <form className="paper-create-form" onSubmit={handleCreatePaper}>
+              <div className="paper-form-row">
+                <div className="form-group">
+                  <label>Title</label>
+                  <input
+                    type="text"
+                    placeholder="Paper title"
+                    value={newPaper.title}
+                    onChange={(e) => setNewPaper({ ...newPaper, title: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Authors</label>
+                  <input
+                    type="text"
+                    placeholder="Authors (comma separated)"
+                    value={newPaper.authors}
+                    onChange={(e) => setNewPaper({ ...newPaper, authors: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="paper-form-row">
+                <div className="form-group">
+                  <label>Publication year</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 2025"
+                    value={newPaper.publicationYear}
+                    onChange={(e) => setNewPaper({ ...newPaper, publicationYear: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Journal</label>
+                  <input
+                    type="text"
+                    placeholder="Journal name"
+                    value={newPaper.journal}
+                    onChange={(e) => setNewPaper({ ...newPaper, journal: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="paper-form-row">
+                <div className="form-group">
+                  <label>External link</label>
+                  <input
+                    type="url"
+                    placeholder="Optional link"
+                    value={newPaper.externalLink}
+                    onChange={(e) => setNewPaper({ ...newPaper, externalLink: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Upload PDF</label>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setPdfFile(e.target.files[0])}
+                  />
+                </div>
+              </div>
+
+              <div className="paper-form-actions">
+                <button type="submit" className="btn btn-primary">
+                  Save Paper
+                </button>
+              </div>
+
+              {createError && <div className="alert alert-error">{createError}</div>}
+              {createSuccess && <div className="alert alert-success">{createSuccess}</div>}
+            </form>
+          </div>
+        )}
       </div>
 
       {/* PAPERS */}
