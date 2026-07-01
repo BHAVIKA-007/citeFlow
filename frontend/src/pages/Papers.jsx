@@ -34,19 +34,26 @@ const Papers = () => {
   const [createSuccess, setCreateSuccess] = useState("");
 
   const location = useLocation();
+  const selectedTopicName = topics.find((topic) => String(topic._id) === String(selectedTopic))?.topicName ||
+    topics.find((topic) => String(topic._id) === String(selectedTopic))?.name || "current topic";
 
   useEffect(() => {
     fetchPapers();
     fetchTopics();
   }, []);
 
-  // ✅ URL → topic sync (IMPORTANT)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const topicParam = params.get("topic");
+    const topicParam = params.get("topic") || "";
+
+    setSelectedTopic(topicParam);
 
     if (topicParam) {
-      setSelectedTopic(topicParam);
+      setNewPaper((prev) => prev.topics?.[0] === topicParam && prev.topics.length === 1
+        ? prev
+        : { ...prev, topics: [topicParam] });
+    } else {
+      setNewPaper((prev) => prev.topics?.length ? { ...prev, topics: [] } : prev);
     }
   }, [location.search]);
 
@@ -203,7 +210,16 @@ const Papers = () => {
         {/* ✅ NEW TOPIC FILTER */}
         <select
           value={selectedTopic}
-          onChange={(e) => setSelectedTopic(e.target.value)}
+          onChange={(e) => {
+            const nextTopic = e.target.value;
+            setSelectedTopic(nextTopic);
+
+            if (nextTopic) {
+              setNewPaper((prev) => ({ ...prev, topics: [nextTopic] }));
+            } else {
+              setNewPaper((prev) => ({ ...prev, topics: [] }));
+            }
+          }}
         >
           <option value="">All Topics</option>
           {topics.map(t => (
@@ -278,21 +294,32 @@ const Papers = () => {
 
               <div className="paper-form-row">
                 <div className="form-group">
-                  <label>Topic(s)</label>
-                  <select
-                    multiple
-                    value={newPaper.topics}
-                    onChange={(e) => {
-                      const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-                      setNewPaper({ ...newPaper, topics: selected });
-                    }}
-                  >
-                    {topics.map((topic) => (
-                      <option key={topic._id} value={topic._id}>
-                        {topic.topicName || topic.name}
-                      </option>
-                    ))}
-                  </select>
+                  <label>{selectedTopic ? "Topic" : "Topic(s)"}</label>
+                  {selectedTopic ? (
+                    <>
+                      <select value={newPaper.topics[0] || ""} disabled>
+                        <option value={selectedTopic}>{selectedTopicName}</option>
+                      </select>
+                      <small style={{ display: "block", marginTop: "0.35rem", color: "#64748b" }}>
+                        This paper will be added to the currently selected topic.
+                      </small>
+                    </>
+                  ) : (
+                    <select
+                      multiple
+                      value={newPaper.topics}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                        setNewPaper((prev) => ({ ...prev, topics: selected }));
+                      }}
+                    >
+                      {topics.map((topic) => (
+                        <option key={topic._id} value={topic._id}>
+                          {topic.topicName || topic.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>External link</label>
@@ -300,7 +327,7 @@ const Papers = () => {
                     type="url"
                     placeholder="Optional link"
                     value={newPaper.externalLink}
-                    onChange={(e) => setNewPaper({ ...newPaper, externalLink: e.target.value })}
+                    onChange={(e) => setNewPaper((prev) => ({ ...prev, externalLink: e.target.value }))}
                   />
                 </div>
               </div>

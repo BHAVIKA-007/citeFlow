@@ -68,8 +68,8 @@ if (publicationYear !== undefined && publicationYear !== "") {
         throw new ApiError(400, "Publication year must be a number");
     }
 
-    if (yearNumber < 1000 || yearNumber > new Date().getFullYear() + 10) {
-        throw new ApiError(400, "Publication year is out of valid range");
+    if (yearNumber < 1000 || yearNumber > new Date().getFullYear()) {
+        throw new ApiError(400, "Publication year cannot be in the future");
     }
 }
 
