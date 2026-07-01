@@ -4,6 +4,36 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Paper } from "../models/paper.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+const normalizeTopics = (topics) => {
+    if (Array.isArray(topics)) {
+        return topics
+            .filter((t) => t !== null && t !== undefined && String(t).trim() !== "")
+            .map((t) => String(t));
+    }
+
+    if (typeof topics === "string" && topics.trim()) {
+        const trimmed = topics.trim();
+
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .filter((t) => t !== null && t !== undefined && String(t).trim() !== "")
+                    .map((t) => String(t));
+            }
+            if (parsed) {
+                return [String(parsed)];
+            }
+        } catch {
+            return trimmed
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean);
+        }
+    }
+
+    return [];
+};
 
 // Create Paper
 
@@ -54,13 +84,7 @@ if (publicationYear !== undefined && publicationYear !== "") {
     console.log("👤 AUTHORS ARRAY:", authorsArray);
 
     // ================= TOPICS =================
-    let topicsArray = [];
-
-    if (Array.isArray(topics)) {
-        topicsArray = topics.filter(t => t);
-    } else if (typeof topics === 'string' && topics.trim()) {
-        topicsArray = [topics];
-    }
+    const topicsArray = normalizeTopics(topics);
 
     console.log("🏷 TOPICS ARRAY:", topicsArray);
 
@@ -157,12 +181,8 @@ const updatePaper = asyncHandler(async (req, res) => {
     }
 
     // Handle topics as array
-    if (topics) {
-        if (typeof topics === 'string') {
-            updateData.topics = [topics];
-        } else if (Array.isArray(topics)) {
-            updateData.topics = topics.filter(t => t);
-        }
+    if (topics !== undefined) {
+        updateData.topics = normalizeTopics(topics);
     }
 
     const paper = await Paper.findOneAndUpdate(

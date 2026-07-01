@@ -30,7 +30,13 @@ const getTopics = asyncHandler(async (req, res) => {
 
     const topicsWithCount = await Promise.all(
         topics.map(async (topic) => {
-            const count = await Paper.countDocuments({ topics: topic._id, owner: req.user._id });
+            const count = await Paper.countDocuments({
+                owner: req.user._id,
+                $or: [
+                    { topics: topic._id },
+                    { topics: topic._id.toString() }
+                ]
+            });
             return {
                 ...topic.toObject(),
                 name: topic.topicName || topic.name || "Untitled Topic",

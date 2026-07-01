@@ -150,6 +150,9 @@ const Papers = () => {
     formData.append("publicationYear", newPaper.publicationYear);
     formData.append("journal", newPaper.journal);
     formData.append("externalLink", newPaper.externalLink);
+    if (newPaper.topics?.length) {
+      newPaper.topics.forEach((topicId) => formData.append("topics", topicId));
+    }
     if (pdfFile) {
       formData.append("pdf", pdfFile);
     }
@@ -275,6 +278,23 @@ const Papers = () => {
 
               <div className="paper-form-row">
                 <div className="form-group">
+                  <label>Topic(s)</label>
+                  <select
+                    multiple
+                    value={newPaper.topics}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                      setNewPaper({ ...newPaper, topics: selected });
+                    }}
+                  >
+                    {topics.map((topic) => (
+                      <option key={topic._id} value={topic._id}>
+                        {topic.topicName || topic.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
                   <label>External link</label>
                   <input
                     type="url"
@@ -283,6 +303,9 @@ const Papers = () => {
                     onChange={(e) => setNewPaper({ ...newPaper, externalLink: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="paper-form-row">
                 <div className="form-group">
                   <label>Upload PDF</label>
                   <input
